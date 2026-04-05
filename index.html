@@ -269,6 +269,14 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
   <div class="card">
     <div class="card-title">수익 분석</div>
     <div class="profit-list">
+      <div class="profit-row">
+        <span class="profit-label">정상 소매가</span>
+        <span class="profit-val" id="r-retail">-</span>
+      </div>
+      <div class="profit-row" id="r-disc-row" style="display:none">
+        <span class="profit-label" id="r-disc-label" style="color:var(--text3);font-size:12px"></span>
+        <span class="profit-val" style="color:var(--text3);font-size:12px"></span>
+      </div>
       <div class="profit-row profit-main">
         <span class="profit-label">최종 판매가</span>
         <span class="profit-val" id="r-selling">-</span>
@@ -1049,7 +1057,18 @@ function calc(){
   const totalCost=cost+fee+shipBurden+other;
   const profit=selling-totalCost;
   const margin=selling>0?(profit/selling*100):0;
+  const retail=getRetail();
+  document.getElementById('r-retail').textContent=retail?fmt(retail):'-';
   document.getElementById('r-selling').textContent=selling?fmt(selling):'-';
+  const discRow=document.getElementById('r-disc-row');
+  const discLabel=document.getElementById('r-disc-label');
+  if(retail&&selling&&priceMode==='discount'){
+    const discRate=parseFloat(document.getElementById('disc-rate').value)||0;
+    if(discRate>0){
+      discRow.style.display='flex';
+      discLabel.textContent=`할인율 ${discRate}%`;
+    } else {discRow.style.display='none';}
+  } else {discRow.style.display='none';}
   const pe=document.getElementById('r-profit');const me=document.getElementById('r-margin');
   pe.textContent=selling?fmt(profit):'-';
   me.textContent=selling?margin.toFixed(1)+'%':'-';
