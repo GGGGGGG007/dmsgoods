@@ -32,10 +32,20 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
 .toggle-group{display:flex;gap:4px}
 .toggle-btn{flex:1;padding:7px 8px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif}
 .toggle-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
-.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:1rem}
-.metric{background:var(--bg3);border-radius:var(--radius);padding:10px 6px;text-align:center;overflow:hidden}
-.metric-label{font-size:11px;color:var(--text2);margin-bottom:3px;white-space:nowrap}
-.metric-val{font-size:clamp(10px,2.2vw,15px);font-weight:700;font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.profit-list{display:flex;flex-direction:column;gap:0}
+.profit-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:6px}
+.profit-row:hover{background:var(--bg3)}
+.profit-label{font-size:13px;color:var(--text2)}
+.profit-val{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;text-align:right}
+.profit-main .profit-label{font-size:14px;font-weight:700;color:var(--text)}
+.profit-main .profit-val{font-size:16px;font-weight:700;color:var(--text)}
+.profit-total .profit-label{font-size:13px;font-weight:700;color:var(--text)}
+.profit-total .profit-val{font-size:13px;font-weight:700;color:var(--text)}
+.profit-result .profit-label{font-size:14px;font-weight:700;color:var(--text)}
+.profit-result .profit-val{font-size:16px;font-weight:700}
+.profit-target .profit-label{font-size:12px;color:var(--text2)}
+.profit-target .profit-val{font-size:14px;font-weight:700}
+.profit-divider{border:none;border-top:0.5px solid var(--border2);margin:4px 0}
 .pos{color:var(--green)}.neg{color:var(--red)}.warn{color:var(--amber)}
 .cost-breakdown{display:flex;flex-direction:column;gap:2px;margin-top:1rem}
 .cost-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 10px;border-radius:6px}
@@ -258,22 +268,46 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
   </div>
   <div class="card">
     <div class="card-title">수익 분석</div>
-    <div class="metric-grid">
-      <div class="metric"><div class="metric-label">최종 판매가</div><div class="metric-val" id="r-selling">-</div></div>
-      <div class="metric"><div class="metric-label">총 비용</div><div class="metric-val" id="r-totalcost">-</div></div>
-      <div class="metric"><div class="metric-label">순 수익</div><div class="metric-val pos" id="r-profit">-</div></div>
-      <div class="metric"><div class="metric-label">수익률</div><div class="metric-val pos" id="r-margin">-</div></div>
-    </div>
-    <div class="cost-breakdown">
-      <div class="cost-row"><span class="cost-label">원가</span><span class="cost-val" id="b-cost">-</span></div>
-      <div class="cost-row"><span class="cost-label">판매 수수료</span><span class="cost-val" id="b-fee">-</span></div>
-      <div class="cost-row"><span class="cost-label">배송비 부담</span><span class="cost-val" id="b-ship">-</span></div>
-      <div class="cost-row"><span class="cost-label">기타 비용</span><span class="cost-val" id="b-other">-</span></div>
-      <div class="cost-row total"><span>합계 비용</span><span class="cost-val" id="b-total">-</span></div>
-    </div>
-    <div class="target-box">
-      <div><p>목표 수익률 달성을 위한 최소 판매가</p></div>
-      <div class="target-price" id="target-price-val">-</div>
+    <div class="profit-list">
+      <div class="profit-row profit-main">
+        <span class="profit-label">최종 판매가</span>
+        <span class="profit-val" id="r-selling">-</span>
+      </div>
+      <div class="profit-divider"></div>
+      <div class="profit-row">
+        <span class="profit-label">원가</span>
+        <span class="profit-val" id="b-cost">-</span>
+      </div>
+      <div class="profit-row">
+        <span class="profit-label">판매 수수료</span>
+        <span class="profit-val" id="b-fee">-</span>
+      </div>
+      <div class="profit-row">
+        <span class="profit-label">배송비 부담</span>
+        <span class="profit-val" id="b-ship">-</span>
+      </div>
+      <div class="profit-row">
+        <span class="profit-label">기타 비용</span>
+        <span class="profit-val" id="b-other">-</span>
+      </div>
+      <div class="profit-row profit-total">
+        <span class="profit-label">총 비용</span>
+        <span class="profit-val" id="b-total">-</span>
+      </div>
+      <div class="profit-divider"></div>
+      <div class="profit-row profit-result">
+        <span class="profit-label">순 수익</span>
+        <span class="profit-val pos" id="r-profit">-</span>
+      </div>
+      <div class="profit-row profit-result">
+        <span class="profit-label">수익률</span>
+        <span class="profit-val pos" id="r-margin">-</span>
+      </div>
+      <div class="profit-divider"></div>
+      <div class="profit-row profit-target">
+        <span class="profit-label">목표 수익률 달성 최소 판매가</span>
+        <span class="profit-val" id="target-price-val">-</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1016,29 +1050,23 @@ function calc(){
   const profit=selling-totalCost;
   const margin=selling>0?(profit/selling*100):0;
   document.getElementById('r-selling').textContent=selling?fmt(selling):'-';
-  document.getElementById('r-totalcost').textContent=totalCost?fmt(totalCost):'-';
   const pe=document.getElementById('r-profit');const me=document.getElementById('r-margin');
   pe.textContent=selling?fmt(profit):'-';
   me.textContent=selling?margin.toFixed(1)+'%':'-';
-  pe.className='metric-val '+(profit>0?'pos':profit<0?'neg':'warn');
-  me.className='metric-val '+(margin>=targetM?'pos':margin>=0?'warn':'neg');
+  pe.className='profit-val '+(profit>0?'pos':profit<0?'neg':'warn');
+  me.className='profit-val '+(margin>=targetM?'pos':margin>=0?'warn':'neg');
   document.getElementById('b-cost').textContent=cost?fmt(cost):'-';
   document.getElementById('b-fee').textContent=fee?fmt(fee):'-';
-  document.getElementById('b-ship').textContent=selling?(selling>=freeMin?`무료배송 (-${fmt(shipCost)})`:fmt(0)):'-';
+  document.getElementById('b-ship').textContent=selling?(selling>=freeMin?`무료배송 (-${fmt(shipCost)})`:'-'):'-';
   document.getElementById('b-other').textContent=other?fmt(other):'-';
   document.getElementById('b-total').textContent=totalCost?fmt(totalCost):'-';
   const tv=document.getElementById('target-price-val');
   if(cost&&targetM>0){
-    // 배송비 없이 먼저 계산
     let minSell=Math.ceil((cost+other)/(1-feeRate/100-targetM/100));
-    // 결과가 무료배송 기준 이상이면 배송비 포함해서 재계산
-    if(minSell>=freeMin){
-      minSell=Math.ceil((cost+other+shipCost)/(1-feeRate/100-targetM/100));
-    }
+    if(minSell>=freeMin) minSell=Math.ceil((cost+other+shipCost)/(1-feeRate/100-targetM/100));
     tv.textContent=fmt(minSell);
     tv.style.color=selling&&selling>=minSell?'var(--green)':'var(--red)';
-  }
-  else{tv.textContent='-';tv.style.color='';}
+  } else {tv.textContent='-';tv.style.color='';}
 }
 
 init();
