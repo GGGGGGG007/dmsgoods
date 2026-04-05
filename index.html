@@ -517,20 +517,10 @@ function selCat(t,cat){
   s.cat=cat;s.subcat=null;s.ft=null;s.brand=null;s.pi=null;
   buildCatChips(t);
   done(t+'-sn1',true);
-  // 중분류 있는지 확인
-  const subcats=getSubcats(cat);
-  if(subcats.length>1){
-    show(t+'-step2',true);
-    show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
-    buildSubcatChips(t,cat);
-  } else {
-    // 중분류 없으면 바로 필터 선택으로
-    s.subcat=subcats[0]||null;
-    show(t+'-step2',false);
-    show(t+'-step3',true);
-    show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
-    ['brand','price'].forEach(x=>document.getElementById(t+'-ft-'+x).classList.remove('active'));
-  }
+  show(t+'-step2',true);
+  show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
+  ['brand','price'].forEach(x=>document.getElementById(t+'-ft-'+x).classList.remove('active'));
+  buildSubcatChips(t,cat);
 }
 
 function getSubcats(cat){
