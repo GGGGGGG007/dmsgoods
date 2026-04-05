@@ -398,8 +398,8 @@ const SAMPLE=[
 
 let allProducts=[];
 let categoryRanges={};
-let pS={cat:null,subcat:null,ft:null,brand:null,pi:null};
-let fS={cat:null,subcat:null,ft:null,brand:null,pi:null};
+let pS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
+let fS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
 let selProd=null;
 let fCalcProd=null;
 let fCalcMode='discount';
@@ -498,10 +498,18 @@ function matchRange(price,r){
   return price>=mn&&(mx===null||mx===undefined||price<=mx);
 }
 
+function getPriceRange(t){
+  const s=t==='p'?pS:fS;
+  if(s.pi===null||s.piEnd===null) return null;
+  const points=getRanges(s.cat);
+  const a=points[s.pi], b=points[s.piEnd];
+  return {min:a||0, max:b===null?null:b};
+}
+
 // 필터
 function resetF(t){
-  if(t==='p') pS={cat:null,subcat:null,ft:null,brand:null,pi:null};
-  else fS={cat:null,subcat:null,ft:null,brand:null,pi:null};
+  if(t==='p') pS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
+  else fS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
   ['step2','step3','step4','step5'].forEach(s=>show(t+'-'+s,false));
   show(t+'-rw',false);
   ['sn1','sn2','sn3','sn4','sn5'].forEach(s=>done(t+'-'+s,false));
@@ -582,27 +590,46 @@ function renderS4(t){
     const brands=[...new Set(base.map(p=>p.brand))];
     ct.innerHTML=`<div class="chips-row">${brands.map(b=>`<button class="chip${s.brand===b?' active':''}" onclick="selS4('${t}','brand','${encodeURIComponent(b)}')">${b}</button>`).join('')}</div>`;
   } else {
-    lbl.textContent='가격 구간 선택';
-    const ranges=getRanges(s.cat);
-    if(!ranges.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
-    ct.innerHTML=`<div class="chips-row">${ranges.map((r,i)=>`<button class="chip${s.pi===i?' active':''}" onclick="selS4('${t}','price',${i})">${getRL(r)}</button>`).join('')}</div>`;
+    lbl.textContent='가격 포인트 선택 (시작~끝)';
+    const points=getRanges(s.cat);
+    if(!points.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
+    ct.innerHTML=`<div class="chips-row">${points.map((p,i)=>{
+      const isStart=s.pi===i, isEnd=s.piEnd===i;
+      const cls=isStart||isEnd?' active':'';
+      const mark=isStart?' (시작)':isEnd?' (끝)':'';
+      return `<button class="chip${cls}" onclick="selPricePoint('${t}',${i})">${getPointLabel(p)}${mark}</button>`;
+    }).join('')}</div>
+    ${s.pi!==null?`<div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):'시작점 선택됨. 끝점을 선택하세요.'}</div>`:'<div style="font-size:12px;color:var(--text2);margin-top:6px">시작 포인트를 선택하세요</div>'}`;
   }
+}
+
+function selPricePoint(t,i){
+  const s=t==='p'?pS:fS;
+  if(s.pi===null){
+    s.pi=i; s.piEnd=null;
+  } else if(s.piEnd===null){
+    if(i===s.pi){s.pi=null;s.piEnd=null;}
+    else if(i<s.pi){s.piEnd=s.pi;s.pi=i;}
+    else{s.piEnd=i;}
+  } else {
+    s.pi=i; s.piEnd=null;
+  }
+  renderS4(t);
+  const hasV=s.pi!==null&&s.piEnd!==null;
+  done(t+'-sn4',hasV);
+  if(hasV){show(t+'-step5',true);renderS5(t);}
+  else show(t+'-step5',false);
+  renderResults(t);
 }
 
 function selS4(t,type,val){
   const s=t==='p'?pS:fS;
   if(type==='brand'){const b=decodeURIComponent(val);s.brand=s.brand===b?null:b;}
-  else{const i=Number(val);s.pi=s.pi===i?null:i;}
   renderS4(t);
-  const hasV=s.brand!==null||s.pi!==null;
+  const hasV=s.brand!==null||(s.pi!==null&&s.piEnd!==null);
   done(t+'-sn4',hasV);
-  // 추가 필터 표시 (브랜드 선택했으면 가격, 가격 선택했으면 브랜드)
-  if(hasV){
-    show(t+'-step5',true);
-    renderS5(t);
-  } else {
-    show(t+'-step5',false);
-  }
+  if(hasV){show(t+'-step5',true);renderS5(t);}
+  else show(t+'-step5',false);
   renderResults(t);
 }
 
@@ -613,15 +640,17 @@ function renderS5(t){
   let filtered=allProducts.filter(p=>p.category===s.cat);
   if(s.subcat) filtered=filtered.filter(p=>p.subcategory===s.subcat);
   if(s.brand) filtered=filtered.filter(p=>p.brand===s.brand);
-  if(s.pi!==null){const r=getRanges(s.cat)[s.pi];filtered=filtered.filter(p=>matchRange(p.price,r));}
+  const pr=getPriceRange(t);
+  if(pr) filtered=filtered.filter(p=>matchRange(p.price,pr));
   if(s.ft==='brand'){
-    lbl.textContent='가격 구간 선택';
-    const ranges=getRanges(s.cat);
-    if(!ranges.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
-    ct.innerHTML=`<div class="chips-row">${ranges.map((r,i)=>{
-      const has=filtered.some(p=>matchRange(p.price,r));
-      return has?`<button class="chip${s.pi===i?' active':''}" onclick="selS5('${t}','price',${i})">${getRL(r)}</button>`:'';
-    }).join('')}</div>`;
+    lbl.textContent='가격 포인트 선택 (시작~끝)';
+    const points=getRanges(s.cat);
+    if(!points.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
+    ct.innerHTML=`<div class="chips-row">${points.map((p,i)=>{
+      const isStart=s.pi===i, isEnd=s.piEnd===i;
+      return `<button class="chip${isStart||isEnd?' active':''}" onclick="selPricePoint5('${t}',${i})">${getPointLabel(p)}${isStart?' (시작)':isEnd?' (끝)':''}</button>`;
+    }).join('')}</div>
+    ${s.pi!==null?`<div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):'끝점을 선택하세요.'}</div>`:''}`;
   } else {
     lbl.textContent='브랜드 선택';
     const brands=[...new Set(filtered.map(p=>p.brand))];
@@ -629,12 +658,24 @@ function renderS5(t){
   }
 }
 
+function selPricePoint5(t,i){
+  const s=t==='p'?pS:fS;
+  if(s.pi===null){s.pi=i;s.piEnd=null;}
+  else if(s.piEnd===null){
+    if(i===s.pi){s.pi=null;s.piEnd=null;}
+    else if(i<s.pi){s.piEnd=s.pi;s.pi=i;}
+    else{s.piEnd=i;}
+  } else {s.pi=i;s.piEnd=null;}
+  renderS5(t);
+  done(t+'-sn5',s.pi!==null&&s.piEnd!==null);
+  renderResults(t);
+}
+
 function selS5(t,type,val){
   const s=t==='p'?pS:fS;
   if(type==='brand'){const b=decodeURIComponent(val);s.brand=s.brand===b?null:b;}
-  else{const i=Number(val);s.pi=s.pi===i?null:i;}
   renderS5(t);
-  done(t+'-sn5',s.brand!==null&&s.pi!==null);
+  done(t+'-sn5',s.brand!==null&&s.pi!==null&&s.piEnd!==null);
   renderResults(t);
 }
 
@@ -643,12 +684,14 @@ function renderResults(t){
   let prods=allProducts.filter(p=>p.category===s.cat);
   if(s.subcat) prods=prods.filter(p=>p.subcategory===s.subcat);
   if(s.brand) prods=prods.filter(p=>p.brand===s.brand);
-  if(s.pi!==null){const r=getRanges(s.cat)[s.pi];prods=prods.filter(p=>matchRange(p.price,r));}
+  const pr=getPriceRange(t);
+  if(pr) prods=prods.filter(p=>matchRange(p.price,pr));
   const af=document.getElementById(t+'-af');
+  const points=getRanges(s.cat);
   let tags=`<div class="active-filter-tag">${s.cat}</div>`;
   if(s.subcat) tags+=`<div class="active-filter-tag">${s.subcat} <button onclick="clrF('${t}','subcat')">×</button></div>`;
   if(s.brand) tags+=`<div class="active-filter-tag">${s.brand} <button onclick="clrF('${t}','brand')">×</button></div>`;
-  if(s.pi!==null) tags+=`<div class="active-filter-tag">${getRL(getRanges(s.cat)[s.pi])} <button onclick="clrF('${t}','price')">×</button></div>`;
+  if(pr) tags+=`<div class="active-filter-tag">${getPointLabel(points[s.pi])} ~ ${getPointLabel(points[s.piEnd])} <button onclick="clrF('${t}','price')">×</button></div>`;
   af.innerHTML=tags;
   document.getElementById(t+'-rm').textContent=`${prods.length}개 상품`;
   const grid=document.getElementById(t+'-pg');
@@ -722,21 +765,63 @@ function calcFPrice(){
 function clrF(t,type){
   const s=t==='p'?pS:fS;
   if(type==='subcat'){
-    s.subcat=null;s.ft=null;s.brand=null;s.pi=null;
+    s.subcat=null;s.ft=null;s.brand=null;s.pi=null;s.piEnd=null;
     show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
     done(t+'-sn2',false);done(t+'-sn3',false);done(t+'-sn4',false);done(t+'-sn5',false);
     buildSubcatChips(t,s.cat);
     return;
   }
   if(type==='brand') s.brand=null;
-  else s.pi=null;
+  else {s.pi=null;s.piEnd=null;}
   done(t+'-sn4',false);done(t+'-sn5',false);
   show(t+'-step5',false);
   renderS4(t);
   renderResults(t);
 }
 
-// 가격 구간 설정
+// 가격 구간 설정 — 포인트 방식
+// categoryRanges[cat] = [포인트 숫자 배열] ex) [50000, 100000, 150000, 200000, null] (null=이상)
+
+function getRanges(cat){
+  if(categoryRanges[cat]&&categoryRanges[cat].length) return categoryRanges[cat];
+  // DB 기반 자동 생성 (최대 5개 포인트)
+  const prices=[...new Set(allProducts.filter(p=>p.category===cat).map(p=>p.price).filter(Boolean))].sort((a,b)=>a-b);
+  if(!prices.length) return [];
+  const minP=prices[0], maxP=prices[prices.length-1];
+  const MAX=5;
+  const span=maxP-minP;
+  if(span===0){categoryRanges[cat]=[minP,null];return categoryRanges[cat];}
+  const units=[1000,5000,10000,50000,100000,500000,1000000,5000000];
+  let unit=units[0];
+  for(let u of units){unit=u;if(Math.ceil(span/u)<=MAX) break;}
+  const points=[];
+  let cur=Math.floor(minP/unit)*unit;
+  while(cur<=maxP&&points.length<MAX){points.push(cur);cur+=unit;}
+  points.push(null); // 마지막은 "이상"
+  categoryRanges[cat]=points;
+  return categoryRanges[cat];
+}
+
+function getPointLabel(p){
+  if(p===null) return '이상';
+  const f=n=>n>=1000000?(n/1000000).toFixed(n%1000000===0?0:1)+'백만':n>=10000?(n/10000)+'만':n.toLocaleString('ko-KR');
+  return f(p)+'원';
+}
+
+function matchRange(price,r){
+  // r = {min, max} 형태로 변환된 구간
+  const mn=r.min||0;
+  const mx=r.max;
+  return price>=mn&&(mx===null||mx===undefined||price<=mx);
+}
+
+function pointsToRange(points, selStart, selEnd){
+  // 선택된 두 포인트로 구간 생성
+  const a=points[selStart], b=points[selEnd];
+  return {min: a||0, max: b===null?null:b};
+}
+
+// 가격 구간 설정 UI
 function buildPSTabs(){
   document.getElementById('ps-cat-tabs').innerHTML=getCats().map(c=>`<button class="cat-stab${psCat===c?' active':''}" onclick="selPSCat('${c}')">${c}</button>`).join('');
   if(psCat) renderPSContent();
@@ -749,78 +834,67 @@ function selPSCat(cat){
 
 function renderPSContent(){
   if(!psCat){document.getElementById('ps-content').innerHTML='<div class="no-cat-msg">카테고리를 선택해서 구간을 설정하세요</div>';return;}
-  const ranges=categoryRanges[psCat]||[];
+  const points=getRanges(psCat);
   const prices=allProducts.filter(p=>p.category===psCat).map(p=>p.price).sort((a,b)=>a-b);
   const refHtml=prices.map(p=>`<span class="ref-tag">${p.toLocaleString('ko-KR')}원</span>`).join('');
-  const rowsHtml=ranges.length ? ranges.map((r,i)=>`
+  const pointsHtml=points.map((pt,i)=>`
     <div class="range-row">
-      <input type="number" value="${r.min||0}" placeholder="최솟값" onchange="updateRangeMin(${i},this.value)"/>
-      <span class="range-sep">~</span>
-      <input type="number" value="${r.max||''}" placeholder="최댓값 (없으면 빈칸)" onchange="updateRangeMax(${i},this.value)"/>
-      <span class="range-sep">원</span>
-      <span class="range-preview">${getRL(r)}</span>
-      <button class="rm-btn" onclick="delRange(${i})">×</button>
-    </div>`).join('') : '<div class="no-range-msg">구간이 없어요. 아래 버튼으로 추가하세요.</div>';
-  const previewHtml=ranges.map(r=>`<span class="preview-chip">${getRL(r)}</span>`).join('');
+      <input type="number" value="${pt===null?'':pt}" placeholder="이상 (빈칸)" onchange="updatePoint(${i},this.value)"/>
+      <span class="range-sep">원${pt===null?' (이상)':''}</span>
+      <button class="rm-btn" onclick="delPoint(${i})">×</button>
+    </div>`).join('');
+  const previewHtml=points.map(p=>`<span class="preview-chip">${getPointLabel(p)}</span>`).join('');
   document.getElementById('ps-content').innerHTML=`
     <div class="ref-box">
       <div class="ref-title">${psCat} 실제 가격 (DB 참고)</div>
       <div class="ref-prices">${refHtml}</div>
     </div>
-    <div class="range-rows" id="ps-rows">${rowsHtml}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">포인트를 등록하면 필터에서 두 포인트를 선택해 구간을 지정할 수 있어요</div>
+    <div class="range-rows" id="ps-rows">${pointsHtml}</div>
     <div class="ps-btns">
-      <button class="btn btn-sm btn-primary" onclick="addRange()">+ 구간 추가</button>
+      <button class="btn btn-sm btn-primary" onclick="addPoint()">+ 포인트 추가</button>
       <button class="btn btn-sm" onclick="resetRanges()">초기화</button>
     </div>
     <div class="preview-section">
-      <div class="preview-label">필터 미리보기</div>
-      <div class="preview-chips" id="ps-preview">${previewHtml||'<span style="font-size:12px;color:var(--text3)">구간을 추가하면 여기 표시됩니다</span>'}</div>
+      <div class="preview-label">등록된 포인트</div>
+      <div class="preview-chips" id="ps-preview">${previewHtml||'<span style="font-size:12px;color:var(--text3)">포인트를 추가하세요</span>'}</div>
     </div>`;
 }
 
-function updateRangeMin(i,val){
+function updatePoint(i,val){
   if(!categoryRanges[psCat]) return;
-  categoryRanges[psCat][i].min=val?Number(val):0;
-  refreshPSPreview();
-  saveSettings();
-}
-
-function updateRangeMax(i,val){
-  if(!categoryRanges[psCat]) return;
-  categoryRanges[psCat][i].max=val?Number(val):null;
-  refreshPSPreview();
-  saveSettings();
-}
-
-function refreshPSPreview(){
-  const ranges=categoryRanges[psCat]||[];
-  const el=document.getElementById('ps-preview');
-  if(el) el.innerHTML=ranges.map(r=>`<span class="preview-chip">${getRL(r)}</span>`).join('')||'<span style="font-size:12px;color:var(--text3)">구간을 추가하면 여기 표시됩니다</span>';
-  const rows=document.getElementById('ps-rows');
-  if(rows) rows.querySelectorAll('.range-preview').forEach((el,i)=>{if(ranges[i])el.textContent=getRL(ranges[i]);});
-}
-
-function addRange(){
-  if(!categoryRanges[psCat]) categoryRanges[psCat]=[];
-  const ranges=categoryRanges[psCat];
-  const last=ranges[ranges.length-1];
-  const newMin=last?(last.max||0):0;
-  ranges.push({min:newMin,max:null});
+  categoryRanges[psCat][i]=val?Number(val):null;
+  categoryRanges[psCat].sort((a,b)=>{if(a===null)return 1;if(b===null)return -1;return a-b;});
   renderPSContent();
   saveSettings();
 }
 
-function delRange(i){
-  if(!categoryRanges[psCat]) return;
+function addPoint(){
+  if(!categoryRanges[psCat]) categoryRanges[psCat]=[];
+  const pts=categoryRanges[psCat];
+  // null 앞에 새 포인트 추가
+  const nullIdx=pts.indexOf(null);
+  if(nullIdx>=0) pts.splice(nullIdx,0,0);
+  else pts.push(0);
+  renderPSContent();
+  saveSettings();
+}
+
+function delPoint(i){
+  if(!categoryRanges[psCat]||categoryRanges[psCat].length<=1) return;
   categoryRanges[psCat].splice(i,1);
   renderPSContent();
-  if(pS.pi===i) pS.pi=null;
-  if(fS.pi===i) fS.pi=null;
+  // 필터 초기화
+  ['p','f'].forEach(t=>{
+    const s=t==='p'?pS:fS;
+    s.pi=null;s.piEnd=null;
+  });
   saveSettings();
 }
 
 function resetRanges(){
   delete categoryRanges[psCat];
+  getRanges(psCat);
   renderPSContent();
   saveSettings();
 }
