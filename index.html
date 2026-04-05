@@ -538,13 +538,15 @@ function buildSubcatChips(t,cat){
 function selSubcat(t,scEncoded){
   const sc=decodeURIComponent(scEncoded);
   const s=t==='p'?pS:fS;
-  if(s.subcat===sc){s.subcat=null;buildSubcatChips(t,s.cat);show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);return;}
+  if(s.subcat===sc){s.subcat=null;buildSubcatChips(t,s.cat);show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);done(t+'-sn2',false);done(t+'-sn3',false);done(t+'-sn4',false);done(t+'-sn5',false);return;}
   s.subcat=sc;s.ft=null;s.brand=null;s.pi=null;
   buildSubcatChips(t,s.cat);
   done(t+'-sn2',true);
   show(t+'-step3',true);
-  show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
+  show(t+'-step4',false);show(t+'-step5',false);
+  show(t+'-rw',true);
   ['brand','price'].forEach(x=>document.getElementById(t+'-ft-'+x).classList.remove('active'));
+  renderResults(t);
 }
 
 function setFT(t,type){
@@ -553,8 +555,11 @@ function setFT(t,type){
   document.getElementById(t+'-ft-brand').classList.toggle('active',type==='brand');
   document.getElementById(t+'-ft-price').classList.toggle('active',type==='price');
   done(t+'-sn3',true);
-  show(t+'-step4',true);show(t+'-step5',false);show(t+'-rw',false);
+  show(t+'-step4',true);
+  show(t+'-step5',false);
+  show(t+'-rw',true);
   renderS4(t);
+  renderResults(t);
 }
 
 function getFiltered(t){
@@ -591,9 +596,14 @@ function selS4(t,type,val){
   renderS4(t);
   const hasV=s.brand!==null||s.pi!==null;
   done(t+'-sn4',hasV);
-  show(t+'-step5',hasV);
-  show(t+'-rw',false);
-  if(hasV) renderS5(t);
+  // 추가 필터 표시 (브랜드 선택했으면 가격, 가격 선택했으면 브랜드)
+  if(hasV){
+    show(t+'-step5',true);
+    renderS5(t);
+  } else {
+    show(t+'-step5',false);
+  }
+  renderResults(t);
 }
 
 function renderS5(t){
@@ -624,10 +634,8 @@ function selS5(t,type,val){
   if(type==='brand'){const b=decodeURIComponent(val);s.brand=s.brand===b?null:b;}
   else{const i=Number(val);s.pi=s.pi===i?null:i;}
   renderS5(t);
-  const both=s.brand!==null&&s.pi!==null;
-  done(t+'-sn5',both);
-  show(t+'-rw',both);
-  if(both) renderResults(t);
+  done(t+'-sn5',s.brand!==null&&s.pi!==null);
+  renderResults(t);
 }
 
 function renderResults(t){
@@ -713,12 +721,19 @@ function calcFPrice(){
 
 function clrF(t,type){
   const s=t==='p'?pS:fS;
-  if(type==='subcat'){s.subcat=null;s.ft=null;s.brand=null;s.pi=null;show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);done(t+'-sn2',false);done(t+'-sn3',false);done(t+'-sn4',false);done(t+'-sn5',false);buildSubcatChips(t,s.cat);return;}
+  if(type==='subcat'){
+    s.subcat=null;s.ft=null;s.brand=null;s.pi=null;
+    show(t+'-step3',false);show(t+'-step4',false);show(t+'-step5',false);show(t+'-rw',false);
+    done(t+'-sn2',false);done(t+'-sn3',false);done(t+'-sn4',false);done(t+'-sn5',false);
+    buildSubcatChips(t,s.cat);
+    return;
+  }
   if(type==='brand') s.brand=null;
   else s.pi=null;
-  show(t+'-step5',false);show(t+'-rw',false);
   done(t+'-sn4',false);done(t+'-sn5',false);
+  show(t+'-step5',false);
   renderS4(t);
+  renderResults(t);
 }
 
 // 가격 구간 설정
