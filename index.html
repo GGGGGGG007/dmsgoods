@@ -275,7 +275,7 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
       </div>
       <div class="profit-row" id="r-disc-row" style="display:none">
         <span class="profit-label" id="r-disc-label" style="color:var(--text3);font-size:12px"></span>
-        <span class="profit-val" style="color:var(--text3);font-size:12px"></span>
+        <span class="profit-val" id="r-disc-amt" style="color:var(--red);font-size:12px"></span>
       </div>
       <div class="profit-row profit-main">
         <span class="profit-label">최종 판매가</span>
@@ -1065,8 +1065,10 @@ function calc(){
   if(retail&&selling&&priceMode==='discount'){
     const discRate=parseFloat(document.getElementById('disc-rate').value)||0;
     if(discRate>0){
+      const discAmt=retail-selling;
       discRow.style.display='flex';
       discLabel.textContent=`할인율 ${discRate}%`;
+      document.getElementById('r-disc-amt').textContent=`-${fmt(discAmt)}`;
     } else {discRow.style.display='none';}
   } else {discRow.style.display='none';}
   const pe=document.getElementById('r-profit');const me=document.getElementById('r-margin');
