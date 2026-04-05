@@ -226,14 +226,11 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
     </div>
     <div id="pkg-sec" style="display:none">
       <div class="field" style="margin-bottom:10px"><label>패키지명</label><input id="pkg-name" placeholder="예: 입문자 드럼 세트"/></div>
-      <div class="card-title">구성 상품</div>
-      <div class="pkg-items" id="pkg-items">
-        <div class="pkg-item"><input placeholder="상품명" class="pi-name"/><input placeholder="원가" type="number" class="pi-cost" oninput="calcPkgCost()"/><span>원</span><button class="rm-btn" onclick="removePkg(this)">×</button></div>
-      </div>
-      <button class="btn btn-sm" style="margin-top:8px" onclick="addPkg()">+ 상품 추가</button>
+      <div class="card-title">구성 상품 <span style="font-weight:400;font-size:11px;color:var(--text3)">(상품 카드 클릭하면 추가돼요)</span></div>
+      <div class="pkg-items" id="pkg-items"></div>
       <div class="row2" style="margin-top:12px">
-        <div class="field"><label>소매가 합산 (원)</label><input id="pkg-retail" type="number" placeholder="0" oninput="calcPrice()"/></div>
-        <div class="field"><label>총 원가 (자동)</label><input id="pkg-cost-disp" readonly placeholder="0"/></div>
+        <div class="field"><label>소매가 합산 (자동)</label><input id="pkg-retail" readonly placeholder="0" style="background:var(--bg3)"/></div>
+        <div class="field"><label>총 원가 (자동)</label><input id="pkg-cost-disp" readonly placeholder="0" style="background:var(--bg3)"/></div>
       </div>
     </div>
   </div>
@@ -246,7 +243,7 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
           <button class="toggle-btn" id="m-direct" onclick="setPM('direct')">직접 입력</button>
         </div>
       </div>
-      <div class="field" id="disc-field"><label>할인율 (%)</label><input id="disc-rate" type="number" min="0" max="99" value="10" oninput="calcPrice()"/></div>
+      <div class="field" id="disc-field"><label>할인율 (%)</label><input id="disc-rate" type="number" min="0" max="99" placeholder="0" oninput="calcPrice()"/></div>
       <div class="field" id="direct-field" style="display:none"><label>직접 입력 판매가 (원)</label><input id="direct-price" type="number" placeholder="0" oninput="calc()"/></div>
     </div>
     <div class="row3">
@@ -256,7 +253,7 @@ header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1
     </div>
     <div class="row2">
       <div class="field"><label>기타 비용 (원)</label><input id="other" type="number" value="500" oninput="calc()"/></div>
-      <div class="field"><label>목표 수익률 (%)</label><input id="target-margin" type="number" value="20" oninput="calc()"/></div>
+      <div class="field"><label>목표 수익률 (%)</label><input id="target-margin" type="number" placeholder="0" oninput="calc()"/></div>
     </div>
   </div>
   <div class="card">
@@ -401,6 +398,7 @@ let categoryRanges={};
 let pS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
 let fS={cat:null,subcat:null,ft:null,brand:null,pi:null,piEnd:null};
 let selProd=null;
+let pkgItems=[];
 let fCalcProd=null;
 let fCalcMode='discount';
 let productType='single';
@@ -702,7 +700,7 @@ function renderResults(t){
   const grid=document.getElementById(t+'-pg');
   if(!prods.length){grid.innerHTML='<div class="empty">조건에 맞는 상품이 없습니다</div>';return;}
   grid.innerHTML=prods.map(p=>t==='p'
-    ?`<div class="prod-card${selProd&&selProd.name===p.name?' selected':''}" onclick='selProduct(${JSON.stringify(p)})'><div class="prod-cat">${p.category}${p.subcategory?' · '+p.subcategory:''}</div><div class="prod-brand">${p.brand}</div><div class="prod-name">${p.name}</div><div class="prod-price">${p.price.toLocaleString('ko-KR')}원</div></div>`
+    ?`<div class="prod-card${productType==='single'?(selProd&&selProd.name===p.name?' selected':''):(pkgItems.find(i=>i.name===p.name)?' selected':'')}" onclick='selProduct(${JSON.stringify(p)})'><div class="prod-cat">${p.category}${p.subcategory?' · '+p.subcategory:''}</div><div class="prod-brand">${p.brand}</div><div class="prod-name">${p.name}</div><div class="prod-price">${p.price.toLocaleString('ko-KR')}원</div></div>`
     :`<div class="prod-card${fCalcProd&&fCalcProd.name===p.name?' selected':''}" onclick='selFCalc(${JSON.stringify(p)})'><div class="prod-cat">${p.category}${p.subcategory?' · '+p.subcategory:''}</div><div class="prod-brand">${p.brand}</div><div class="prod-name">${p.name}</div><div class="prod-price">${p.price.toLocaleString('ko-KR')}원</div></div>`
   ).join('');
 }
@@ -906,6 +904,17 @@ function resetRanges(){
 
 // 상품 선택
 function selProduct(p){
+  if(productType==='package'){
+    // 중복 체크
+    if(pkgItems.find(i=>i.name===p.name)){
+      pkgItems=pkgItems.filter(i=>i.name!==p.name);
+    } else {
+      pkgItems.push(p);
+    }
+    renderPkgItems();
+    if(pS.cat) renderResults('p');
+    return;
+  }
   selProd=p;
   document.getElementById('prod-name').value=p.name;
   document.getElementById('retail').value=p.price;
@@ -925,11 +934,33 @@ function clrProd(){
   calc();
 }
 
-function switchTab(t,btn){
-  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(t).classList.add('active');
+function renderPkgItems(){
+  const grid=document.getElementById('pkg-items');
+  if(!pkgItems.length){
+    grid.innerHTML=`<div style="font-size:12px;color:var(--text3);padding:8px 0">상품 카드를 클릭해서 추가하세요</div>`;
+    document.getElementById('pkg-retail').value='';
+    document.getElementById('pkg-cost-disp').value='';
+    calc();
+    return;
+  }
+  grid.innerHTML=pkgItems.map((p,i)=>`
+    <div class="pkg-item">
+      <span style="font-size:13px;flex:1">${p.name}</span>
+      <span style="font-size:12px;color:var(--text2)">${p.price.toLocaleString('ko-KR')}원</span>
+      <span style="font-size:11px;color:var(--text3)">원가 ${p.cost.toLocaleString('ko-KR')}원</span>
+      <button class="rm-btn" onclick="removePkgItem(${i})">×</button>
+    </div>`).join('');
+  const totalRetail=pkgItems.reduce((a,p)=>a+p.price,0);
+  const totalCost=pkgItems.reduce((a,p)=>a+p.cost,0);
+  document.getElementById('pkg-retail').value=totalRetail;
+  document.getElementById('pkg-cost-disp').value=totalCost.toLocaleString('ko-KR');
+  calcPrice();
+}
+
+function removePkgItem(i){
+  pkgItems.splice(i,1);
+  renderPkgItems();
+  if(pS.cat) renderResults('p');
 }
 
 function setType(t){
@@ -938,7 +969,15 @@ function setType(t){
   document.getElementById('type-package').classList.toggle('active',t==='package');
   document.getElementById('single-sec').style.display=t==='single'?'block':'none';
   document.getElementById('pkg-sec').style.display=t==='package'?'block':'none';
+  if(t==='package') renderPkgItems();
   calc();
+}
+
+function switchTab(t,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(t).classList.add('active');
 }
 
 function setPM(m){
@@ -950,23 +989,6 @@ function setPM(m){
   calcPrice();
 }
 
-function addPkg(){
-  const d=document.createElement('div');d.className='pkg-item';
-  d.innerHTML=`<input placeholder="상품명" class="pi-name"/><input placeholder="원가" type="number" class="pi-cost" oninput="calcPkgCost()"/><span>원</span><button class="rm-btn" onclick="removePkg(this)">×</button>`;
-  document.getElementById('pkg-items').appendChild(d);
-}
-
-function removePkg(btn){
-  if(document.querySelectorAll('.pkg-item').length>1) btn.closest('.pkg-item').remove();
-  calcPkgCost();
-}
-
-function calcPkgCost(){
-  const total=[...document.querySelectorAll('.pi-cost')].reduce((a,i)=>a+(parseFloat(i.value)||0),0);
-  document.getElementById('pkg-cost-disp').value=total?total.toLocaleString('ko-KR'):'';
-  calc();
-}
-
 function calcPrice(){
   if(priceMode==='discount'){
     const retail=getRetail();
@@ -976,8 +998,8 @@ function calcPrice(){
   calc();
 }
 
-function getRetail(){return productType==='single'?parseFloat(document.getElementById('retail').value)||0:parseFloat(document.getElementById('pkg-retail').value)||0;}
-function getCost(){if(productType==='single') return parseFloat(document.getElementById('cost').value)||0;return[...document.querySelectorAll('.pi-cost')].reduce((a,i)=>a+(parseFloat(i.value)||0),0);}
+function getRetail(){return productType==='single'?parseFloat(document.getElementById('retail').value)||0:pkgItems.reduce((a,p)=>a+p.price,0);}
+function getCost(){return productType==='single'?parseFloat(document.getElementById('cost').value)||0:pkgItems.reduce((a,p)=>a+p.cost,0);}
 function fmt(n){return n.toLocaleString('ko-KR')+'원';}
 
 function calc(){
@@ -1006,7 +1028,16 @@ function calc(){
   document.getElementById('b-other').textContent=other?fmt(other):'-';
   document.getElementById('b-total').textContent=totalCost?fmt(totalCost):'-';
   const tv=document.getElementById('target-price-val');
-  if(cost&&targetM>0){const minSell=Math.ceil((cost+shipCost+other)/(1-feeRate/100-targetM/100));tv.textContent=fmt(minSell);tv.style.color=selling&&selling>=minSell?'var(--green)':'var(--red)';}
+  if(cost&&targetM>0){
+    // 배송비 없이 먼저 계산
+    let minSell=Math.ceil((cost+other)/(1-feeRate/100-targetM/100));
+    // 결과가 무료배송 기준 이상이면 배송비 포함해서 재계산
+    if(minSell>=freeMin){
+      minSell=Math.ceil((cost+other+shipCost)/(1-feeRate/100-targetM/100));
+    }
+    tv.textContent=fmt(minSell);
+    tv.style.color=selling&&selling>=minSell?'var(--green)':'var(--red)';
+  }
   else{tv.textContent='-';tv.style.color='';}
 }
 
