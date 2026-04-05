@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>드럼몬스터 상품 관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f6f3;--bg2:#fff;--bg3:#efefeb;--text:#1a1a18;--text2:#6b6b67;--text3:#9e9e9a;--border:rgba(26,26,24,0.1);--border2:rgba(26,26,24,0.18);--green:#1D9E75;--red:#E24B4A;--amber:#BA7517;--radius:10px;--radius-lg:14px;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+header{background:var(--bg2);border-bottom:0.5px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;gap:1rem}
+.logo{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;white-space:nowrap;flex-shrink:0}
+.logo span{color:var(--text2)}
+.header-tabs{display:flex;gap:2px;background:var(--bg3);border-radius:8px;padding:3px;flex-shrink:0}
+.tab{padding:6px 18px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text2);border-radius:6px;transition:all 0.15s;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+.tab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.gs-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);white-space:nowrap}
+.gs-dot{width:7px;height:7px;border-radius:50%;background:#ccc;transition:background 0.3s;flex-shrink:0}
+.gs-dot.connected{background:var(--green)}.gs-dot.loading{background:var(--amber)}
+.main{max-width:1040px;margin:0 auto;padding:1.5rem}
+.section{display:none}.section.active{display:block}
+.card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.08em}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--text2);font-weight:500}
+.field input{border:0.5px solid var(--border2);border-radius:var(--radius);padding:8px 11px;font-size:14px;background:var(--bg2);color:var(--text);width:100%;font-family:'Noto Sans KR',sans-serif;transition:border-color 0.15s}
+.field input:focus{outline:none;border-color:var(--text)}
+.field input[readonly]{background:var(--bg3);color:var(--text2)}
+.toggle-group{display:flex;gap:4px}
+.toggle-btn{flex:1;padding:7px 8px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;cursor:pointer;color:var(--text2);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif}
+.toggle-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:1rem}
+.metric{background:var(--bg3);border-radius:var(--radius);padding:10px;text-align:center}
+.metric-label{font-size:11px;color:var(--text2);margin-bottom:3px}
+.metric-val{font-size:15px;font-weight:700;font-family:'DM Mono',monospace}
+.pos{color:var(--green)}.neg{color:var(--red)}.warn{color:var(--amber)}
+.cost-breakdown{display:flex;flex-direction:column;gap:2px;margin-top:1rem}
+.cost-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 10px;border-radius:6px}
+.cost-row:hover{background:var(--bg3)}
+.cost-row.total{font-weight:700;font-size:13px;background:var(--bg3);margin-top:4px}
+.cost-label{color:var(--text2)}.cost-val{font-family:'DM Mono',monospace;text-align:right}
+.target-box{background:var(--bg3);border-radius:var(--radius);padding:12px 14px;margin-top:1rem;display:flex;justify-content:space-between;align-items:center}
+.target-box p{font-size:11px;color:var(--text2)}
+.target-price{font-size:16px;font-weight:700;font-family:'DM Mono',monospace}
+/* 상품 찾기 가격 계산 */
+.f-calc-wrap{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;display:none}
+.f-calc-wrap.visible{display:block}
+.f-calc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.f-calc-prod-name{font-size:14px;font-weight:700}
+.f-calc-prod-info{font-size:12px;color:var(--text2);margin-top:2px}
+.f-calc-mode{display:flex;gap:4px;margin-bottom:1rem}
+.f-calc-mode-btn{flex:1;padding:8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif;text-align:center}
+.f-calc-mode-btn.active{border:2px solid var(--text);background:var(--bg3);color:var(--text)}
+.f-price-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem}
+.f-price-box{background:var(--bg3);border-radius:var(--radius);padding:10px 12px}
+.f-price-label{font-size:11px;color:var(--text2);margin-bottom:3px}
+.f-price-val{font-size:15px;font-weight:700;font-family:'DM Mono',monospace}
+.f-input-row{display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.f-input-row label{font-size:12px;color:var(--text2);white-space:nowrap}
+.f-input-row input{border:0.5px solid var(--border2);border-radius:var(--radius);padding:7px 10px;font-size:14px;background:var(--bg2);color:var(--text);width:80px;font-family:'DM Mono',monospace;text-align:right}
+.f-input-row input:focus{outline:none;border-color:var(--text)}
+.f-input-row span{font-size:12px;color:var(--text2)}
+.f-results{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.f-result-box{background:var(--bg3);border-radius:var(--radius);padding:10px 12px;text-align:center}
+.f-result-label{font-size:11px;color:var(--text2);margin-bottom:3px}
+.f-result-val{font-size:14px;font-weight:700;font-family:'DM Mono',monospace}
+.type-row{display:flex;gap:8px;margin-bottom:1rem}
+.type-card{flex:1;padding:12px;border:0.5px solid var(--border2);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all 0.15s}
+.type-card:hover{background:var(--bg3)}
+.type-card.active{border:2px solid var(--text);background:var(--bg3)}
+.type-card .ti{font-size:20px;margin-bottom:4px}
+.type-card .tn{font-size:13px;font-weight:700}
+.type-card .td{font-size:11px;color:var(--text2);margin-top:2px}
+.pkg-items{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pkg-item{display:grid;grid-template-columns:1fr 110px auto auto;gap:8px;align-items:center;background:var(--bg3);border-radius:var(--radius);padding:7px 10px}
+.pkg-item input{border:0.5px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:13px;background:var(--bg2);color:var(--text);width:100%;font-family:'Noto Sans KR',sans-serif}
+.pkg-item input:focus{outline:none}
+.pkg-item span{font-size:12px;color:var(--text2)}
+.rm-btn{background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:0 2px;line-height:1;transition:color 0.15s}
+.rm-btn:hover{color:var(--red)}
+.btn{padding:7px 16px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;cursor:pointer;font-size:13px;color:var(--text);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif}
+.btn:hover{background:var(--bg3)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn-primary:hover{opacity:0.85}
+.connect-bar{display:flex;align-items:center;gap:10px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem}
+.connect-bar input{flex:1;border:none;background:transparent;font-size:13px;color:var(--text);outline:none;font-family:'DM Mono',monospace}
+.connect-bar input::placeholder{color:var(--text3);font-family:'Noto Sans KR',sans-serif}
+.filter-wrap{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem}
+.filter-step{margin-bottom:1rem}
+.filter-step:last-child{margin-bottom:0}
+.step-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--text);color:#fff;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.step-num.done{background:var(--green)}
+.chips-row{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 14px;border-radius:20px;border:0.5px solid var(--border2);background:var(--bg2);cursor:pointer;font-size:13px;color:var(--text2);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif}
+.chip:hover:not(.active){background:var(--bg3)}
+.chip.active{background:var(--text);color:#fff;border-color:var(--text)}
+.filter-type-row{display:flex;gap:8px}
+.filter-type-btn{flex:1;padding:10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);transition:all 0.15s;font-family:'Noto Sans KR',sans-serif;text-align:center}
+.filter-type-btn:hover{background:var(--bg3)}
+.filter-type-btn.active{border:2px solid var(--text);background:var(--bg3);color:var(--text)}
+.filter-divider{border:none;border-top:0.5px solid var(--border);margin:1rem 0}
+.step-hidden{display:none}
+.active-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.active-filter-tag{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border2);border-radius:20px;font-size:12px;color:var(--text2)}
+.active-filter-tag button{background:none;border:none;cursor:pointer;font-size:14px;color:var(--text3);line-height:1;padding:0}
+.active-filter-tag button:hover{color:var(--red)}
+.results-meta{font-size:12px;color:var(--text2);margin-bottom:10px}
+.prod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:700px){.prod-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.prod-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px;cursor:pointer;transition:all 0.15s}
+.prod-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.prod-card.selected{border:2px solid var(--text);background:var(--bg3)}
+.prod-cat{font-size:11px;color:var(--text3);margin-bottom:3px}
+.prod-brand{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:3px}
+.prod-name{font-size:13px;font-weight:500;margin-bottom:10px;line-height:1.4}
+.prod-price{font-size:16px;font-weight:700;font-family:'DM Mono',monospace}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:14px;grid-column:1/-1}
+.selected-product-box{background:var(--bg3);border-radius:var(--radius);padding:12px 14px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;border:0.5px solid var(--border2)}
+.sp-name{font-size:14px;font-weight:700;margin-bottom:2px}
+.sp-brand{font-size:12px;color:var(--text2)}
+.sp-clear{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text2);line-height:1}
+.sp-clear:hover{color:var(--red)}
+/* 가격 구간 설정 */
+.price-setting{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem}
+.ps-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.ps-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em}
+.cat-stabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem}
+.cat-stab{padding:5px 13px;border-radius:20px;border:0.5px solid var(--border2);background:var(--bg2);font-size:12px;color:var(--text2);cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all 0.15s}
+.cat-stab:hover{background:var(--bg3)}
+.cat-stab.active{background:var(--text);color:#fff;border-color:var(--text)}
+.ref-box{background:var(--bg3);border-radius:var(--radius);padding:10px 12px;margin-bottom:1rem}
+.ref-title{font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.ref-prices{display:flex;flex-wrap:wrap;gap:5px}
+.ref-tag{font-size:11px;padding:3px 8px;background:var(--bg2);border:0.5px solid var(--border);border-radius:4px;color:var(--text2);font-family:'DM Mono',monospace}
+.range-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.range-row{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:var(--radius);padding:8px 12px;flex-wrap:wrap}
+.range-row input{border:0.5px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:13px;background:var(--bg2);color:var(--text);width:110px;font-family:'DM Mono',monospace;text-align:right}
+.range-row input:focus{outline:none;border-color:var(--text)}
+.range-sep{font-size:12px;color:var(--text2)}
+.range-preview{font-size:12px;color:var(--text3);flex:1;text-align:right;min-width:80px}
+.ps-btns{display:flex;gap:6px;margin-bottom:1rem}
+.preview-section{border-top:0.5px solid var(--border);padding-top:1rem}
+.preview-label{font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500}
+.preview-chips{display:flex;flex-wrap:wrap;gap:6px}
+.preview-chip{padding:5px 13px;border-radius:20px;border:0.5px solid var(--border2);font-size:12px;color:var(--text2);background:var(--bg3)}
+.no-cat-msg{text-align:center;padding:1.5rem;color:var(--text2);font-size:13px}
+.no-range-msg{font-size:12px;color:var(--text3);padding:8px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">drum<span>monster</span></div>
+  <div class="header-tabs">
+    <button class="tab active" onclick="switchTab('planning',this)">상품 기획</button>
+    <button class="tab" onclick="switchTab('finder',this)">상품 찾기</button>
+  </div>
+  <div class="gs-bar">
+    <div class="gs-dot" id="gs-dot"></div>
+    <span id="gs-msg">미연동</span>
+  </div>
+</header>
+
+<div class="main">
+
+<!-- 상품 기획 -->
+<div id="planning" class="section active">
+  <div class="connect-bar">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" opacity="0.4"><circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <input id="sheet-url" placeholder="구글 Apps Script 웹앱 URL" />
+    <button class="btn btn-sm btn-primary" onclick="loadSheet()">연동</button>
+  </div>
+  <div class="filter-wrap">
+    <div class="card-title">상품 선택</div>
+    <div class="filter-step">
+      <div class="step-label"><span class="step-num" id="p-sn1">1</span>카테고리</div>
+      <div class="chips-row" id="p-cat-chips"></div>
+    </div>
+    <div class="filter-step step-hidden" id="p-step2">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="p-sn2">2</span>필터 선택</div>
+      <div class="filter-type-row">
+        <button class="filter-type-btn" id="p-ft-brand" onclick="setFT('p','brand')">브랜드</button>
+        <button class="filter-type-btn" id="p-ft-price" onclick="setFT('p','price')">가격</button>
+      </div>
+    </div>
+    <div class="filter-step step-hidden" id="p-step3">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="p-sn3">3</span><span id="p-s3lbl">값 선택</span></div>
+      <div id="p-s3"></div>
+    </div>
+    <div class="filter-step step-hidden" id="p-step4">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="p-sn4">4</span><span id="p-s4lbl">추가 필터</span></div>
+      <div id="p-s4"></div>
+    </div>
+    <div id="p-rw" class="step-hidden">
+      <hr class="filter-divider">
+      <div id="p-af" class="active-filters"></div>
+      <div class="results-meta" id="p-rm"></div>
+      <div class="prod-grid" id="p-pg"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">상품 유형</div>
+    <div id="p-sel-wrap"></div>
+    <div class="type-row">
+      <div class="type-card active" id="type-single" onclick="setType('single')"><div class="ti">📦</div><div class="tn">단품</div><div class="td">개별 상품 단독 판매</div></div>
+      <div class="type-card" id="type-package" onclick="setType('package')"><div class="ti">🎁</div><div class="tn">패키지</div><div class="td">여러 상품 묶음 기획</div></div>
+    </div>
+    <div id="single-sec">
+      <div class="row3">
+        <div class="field"><label>상품명</label><input id="prod-name" placeholder="상품 카드 클릭 시 자동 입력"/></div>
+        <div class="field"><label>소매가 (원)</label><input id="retail" type="number" placeholder="0" oninput="calcPrice()"/></div>
+        <div class="field"><label>원가 (원)</label><input id="cost" type="number" placeholder="0" oninput="calc()"/></div>
+      </div>
+    </div>
+    <div id="pkg-sec" style="display:none">
+      <div class="field" style="margin-bottom:10px"><label>패키지명</label><input id="pkg-name" placeholder="예: 입문자 드럼 세트"/></div>
+      <div class="card-title">구성 상품</div>
+      <div class="pkg-items" id="pkg-items">
+        <div class="pkg-item"><input placeholder="상품명" class="pi-name"/><input placeholder="원가" type="number" class="pi-cost" oninput="calcPkgCost()"/><span>원</span><button class="rm-btn" onclick="removePkg(this)">×</button></div>
+      </div>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="addPkg()">+ 상품 추가</button>
+      <div class="row2" style="margin-top:12px">
+        <div class="field"><label>소매가 합산 (원)</label><input id="pkg-retail" type="number" placeholder="0" oninput="calcPrice()"/></div>
+        <div class="field"><label>총 원가 (자동)</label><input id="pkg-cost-disp" readonly placeholder="0"/></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">판매가 설정</div>
+    <div class="row2" style="margin-bottom:12px">
+      <div class="field"><label>설정 방식</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="m-disc" onclick="setPM('discount')">할인율</button>
+          <button class="toggle-btn" id="m-direct" onclick="setPM('direct')">직접 입력</button>
+        </div>
+      </div>
+      <div class="field" id="disc-field"><label>할인율 (%)</label><input id="disc-rate" type="number" min="0" max="99" value="10" oninput="calcPrice()"/></div>
+      <div class="field" id="direct-field" style="display:none"><label>직접 입력 판매가 (원)</label><input id="direct-price" type="number" placeholder="0" oninput="calc()"/></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>판매 수수료 (%)</label><input id="fee" type="number" value="7" oninput="calc()"/></div>
+      <div class="field"><label>무료배송 기준 (원)</label><input id="free-ship-min" type="number" value="60000" oninput="saveSettings();calc()"/></div>
+      <div class="field"><label>배송비 (원)</label><input id="ship" type="number" value="3000" oninput="calc()"/></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>기타 비용 (원)</label><input id="other" type="number" value="500" oninput="calc()"/></div>
+      <div class="field"><label>목표 수익률 (%)</label><input id="target-margin" type="number" value="20" oninput="calc()"/></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">수익 분석</div>
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-label">최종 판매가</div><div class="metric-val" id="r-selling">-</div></div>
+      <div class="metric"><div class="metric-label">총 비용</div><div class="metric-val" id="r-totalcost">-</div></div>
+      <div class="metric"><div class="metric-label">순 수익</div><div class="metric-val pos" id="r-profit">-</div></div>
+      <div class="metric"><div class="metric-label">수익률</div><div class="metric-val pos" id="r-margin">-</div></div>
+    </div>
+    <div class="cost-breakdown">
+      <div class="cost-row"><span class="cost-label">원가</span><span class="cost-val" id="b-cost">-</span></div>
+      <div class="cost-row"><span class="cost-label">판매 수수료</span><span class="cost-val" id="b-fee">-</span></div>
+      <div class="cost-row"><span class="cost-label">배송비 부담</span><span class="cost-val" id="b-ship">-</span></div>
+      <div class="cost-row"><span class="cost-label">기타 비용</span><span class="cost-val" id="b-other">-</span></div>
+      <div class="cost-row total"><span>합계 비용</span><span class="cost-val" id="b-total">-</span></div>
+    </div>
+    <div class="target-box">
+      <div><p>목표 수익률 달성을 위한 최소 판매가</p></div>
+      <div class="target-price" id="target-price-val">-</div>
+    </div>
+  </div>
+</div>
+
+<!-- 상품 찾기 -->
+<div id="finder" class="section">
+  <div class="filter-wrap">
+    <div class="card-title">상품 찾기</div>
+    <div class="filter-step">
+      <div class="step-label"><span class="step-num" id="f-sn1">1</span>카테고리</div>
+      <div class="chips-row" id="f-cat-chips"></div>
+    </div>
+    <div class="filter-step step-hidden" id="f-step2">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="f-sn2">2</span>필터 선택</div>
+      <div class="filter-type-row">
+        <button class="filter-type-btn" id="f-ft-brand" onclick="setFT('f','brand')">브랜드</button>
+        <button class="filter-type-btn" id="f-ft-price" onclick="setFT('f','price')">가격</button>
+      </div>
+    </div>
+    <div class="filter-step step-hidden" id="f-step3">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="f-sn3">3</span><span id="f-s3lbl">값 선택</span></div>
+      <div id="f-s3"></div>
+    </div>
+    <div class="filter-step step-hidden" id="f-step4">
+      <hr class="filter-divider">
+      <div class="step-label"><span class="step-num" id="f-sn4">4</span><span id="f-s4lbl">추가 필터</span></div>
+      <div id="f-s4"></div>
+    </div>
+    <div id="f-rw" class="step-hidden">
+      <hr class="filter-divider">
+      <div id="f-af" class="active-filters"></div>
+      <div class="results-meta" id="f-rm"></div>
+      <div class="prod-grid" id="f-pg"></div>
+    </div>
+  </div>
+
+  <!-- 상품 찾기 가격 계산 -->
+  <div class="f-calc-wrap" id="f-calc-wrap">
+    <div class="f-calc-header">
+      <div>
+        <div class="f-calc-prod-name" id="f-calc-name">-</div>
+        <div class="f-calc-prod-info" id="f-calc-info">-</div>
+      </div>
+      <button class="sp-clear" onclick="clearFCalc()">×</button>
+    </div>
+    <div class="f-price-info">
+      <div class="f-price-box"><div class="f-price-label">소매가</div><div class="f-price-val" id="f-retail-val">-</div></div>
+      <div class="f-price-box"><div class="f-price-label">원가</div><div class="f-price-val" id="f-cost-val">-</div></div>
+    </div>
+    <div class="f-calc-mode">
+      <button class="f-calc-mode-btn active" id="f-mode-disc" onclick="setFCalcMode('discount')">소매가 기준 할인율</button>
+      <button class="f-calc-mode-btn" id="f-mode-margin" onclick="setFCalcMode('margin')">원가 기준 마진율</button>
+    </div>
+    <div class="f-input-row" id="f-disc-row">
+      <label>할인율</label>
+      <input type="number" id="f-disc-input" value="10" min="0" max="99" oninput="calcFPrice()"/>
+      <span>%</span>
+    </div>
+    <div class="f-input-row" id="f-margin-row" style="display:none">
+      <label>마진율</label>
+      <input type="number" id="f-margin-input" value="30" min="0" max="99" oninput="calcFPrice()"/>
+      <span>%</span>
+    </div>
+    <div class="f-results">
+      <div class="f-result-box"><div class="f-result-label">최종 판매가</div><div class="f-result-val" id="f-sell-val">-</div></div>
+      <div class="f-result-box"><div class="f-result-label">수익금액</div><div class="f-result-val pos" id="f-profit-val">-</div></div>
+      <div class="f-result-box"><div class="f-result-label">수익률</div><div class="f-result-val pos" id="f-margin-val">-</div></div>
+    </div>
+    <div id="f-extra-info" style="margin-top:8px;font-size:12px;color:var(--text2);text-align:right"></div>
+  </div>
+
+  <!-- 가격 구간 설정 -->
+  <div class="price-setting">
+    <div class="ps-header">
+      <div class="ps-title">카테고리별 가격 구간 설정</div>
+    </div>
+    <div class="cat-stabs" id="ps-cat-tabs"></div>
+    <div id="ps-content"><div class="no-cat-msg">카테고리를 선택해서 구간을 설정하세요</div></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const SHEET_URL_DEFAULT='https://script.google.com/macros/s/AKfycbwbxSaogkhOoPuj864Epct9laj9RBvavfGlp5N_1mi_XUNErDJblT7O91rfphnNt_PhkQ/exec';
+const SAMPLE=[
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'YAMAHA',name:'라이딩 드럼세트',price:1330000,cost:929500},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'YAMAHA',name:'스테이지 커스텀 드럼세트',price:2045000,cost:1430000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'YAMAHA',name:'라이브 커스텀 하이브리드 오크',price:6570000,cost:4587000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'PEARL',name:'익스포트 EXX 드럼세트',price:1550000,cost:1050000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'PEARL',name:'익스포트 EXL 드럼세트',price:1700000,cost:1150000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'MAPEX',name:'비너스 드럼세트',price:1113000,cost:741000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'MAPEX',name:'마스 버피 드럼세트',price:1722000,cost:1155000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'DIXON',name:'딕슨 퓨즈 메이플 드럼세트',price:2100000,cost:1300000},
+  {category:'드럼세트',subcategory:'어쿠스틱',brand:'Gretsch',name:'레니게이드',price:1000000,cost:550000},
+  {category:'심벌세트',subcategory:'세트',brand:'Zildjian',name:'A 커스텀 심벌세트',price:1570000,cost:1050000},
+  {category:'심벌세트',subcategory:'세트',brand:'SABIAN',name:'sbr 심벌세트',price:535000,cost:371000},
+  {category:'심벌세트',subcategory:'세트',brand:'SABIAN',name:'XSR 심벌세트',price:1360000,cost:933000},
+  {category:'심벌세트',subcategory:'세트',brand:'Paiste',name:'101 브라스 심벌세트',price:420000,cost:290000},
+  {category:'심벌세트',subcategory:'세트',brand:'MEINL',name:'BCS 심벌세트',price:400000,cost:300000},
+  {category:'드럼의자',subcategory:'스크류',brand:'DF',name:'스크류 드럼의자 T1B',price:56000,cost:40000},
+  {category:'드럼의자',subcategory:'스크류',brand:'Pearl',name:'D-790 드럼의자',price:75000,cost:50000},
+  {category:'드럼의자',subcategory:'유압',brand:'Tama',name:'HT530B 1st Chair',price:185000,cost:120000},
+  {category:'드럼의자',subcategory:'등받이',brand:'Roc-N-Soc',name:'Original Series w/Back',price:320000,cost:210000},
+  {category:'드럼스틱',subcategory:'나무팁',brand:'Vic Firth',name:'5A Wood Tip',price:12000,cost:6000},
+  {category:'드럼스틱',subcategory:'나일론팁',brand:'Promark',name:'7A Nylon',price:9500,cost:5000},
+  {category:'페달',subcategory:'싱글',brand:'Pearl',name:'P-930 Eliminator',price:185000,cost:110000},
+  {category:'페달',subcategory:'더블',brand:'DW',name:'9002XF Double',price:580000,cost:380000},
+  {category:'젬베',subcategory:'입문',brand:'Meinl',name:'Headliner Djembe 10"',price:85000,cost:42000},
+  {category:'젬베',subcategory:'프로',brand:'Remo',name:'Festival Djembe 12"',price:120000,cost:68000},
+];
+
+let allProducts=[];
+let categoryRanges={};
+let pS={cat:null,ft:null,brand:null,pi:null};
+let fS={cat:null,ft:null,brand:null,pi:null};
+let selProd=null;
+let fCalcProd=null;
+let fCalcMode='discount';
+let productType='single';
+let priceMode='discount';
+let psCat=null;
+
+function saveSettings(){
+  try{
+    localStorage.setItem('dm_free_ship', document.getElementById('free-ship-min').value);
+    localStorage.setItem('dm_sheet_url', document.getElementById('sheet-url').value);
+    localStorage.setItem('dm_cat_ranges', JSON.stringify(categoryRanges));
+  }catch(e){}
+}
+
+function loadSettings(){
+  try{
+    const ship=localStorage.getItem('dm_free_ship');
+    if(ship) document.getElementById('free-ship-min').value=ship;
+    const url=localStorage.getItem('dm_sheet_url');
+    if(url) document.getElementById('sheet-url').value=url;
+    const ranges=localStorage.getItem('dm_cat_ranges');
+    if(ranges) categoryRanges=JSON.parse(ranges);
+  }catch(e){}
+}
+
+function init(){
+  allProducts=SAMPLE;
+  document.getElementById('sheet-url').value=SHEET_URL_DEFAULT;
+  loadSettings();
+  buildCatChips('p'); buildCatChips('f'); buildPSTabs();
+  loadSheet(true);
+}
+
+function loadSheet(auto){
+  const url=(document.getElementById('sheet-url').value||'').trim()||SHEET_URL_DEFAULT;
+  if(!auto) saveSettings();
+  setGs('loading','연결 중...');
+  fetch(url).then(r=>r.json()).then(data=>{
+    if(data&&data.length){
+      allProducts=data.map(r=>({category:r.category||'',subcategory:r.subcategory||'',brand:r.brand||'',name:r.name||'',price:Number(r.price)||0,cost:Number(r.cost)||0})).filter(p=>p.category);
+      setGs('connected',`연동됨 · ${allProducts.length}개 상품`);
+      categoryRanges={};
+      resetF('p'); resetF('f');
+      buildCatChips('p'); buildCatChips('f'); buildPSTabs();
+    }
+  }).catch(()=>setGs('','연동 실패'));
+}
+
+function setGs(cls,msg){
+  document.getElementById('gs-dot').className='gs-dot'+(cls?' '+cls:'');
+  document.getElementById('gs-msg').textContent=msg;
+}
+
+function getCats(){return[...new Set(allProducts.map(p=>p.category))];}
+
+function buildCatChips(t){
+  const s=t==='p'?pS:fS;
+  document.getElementById(t+'-cat-chips').innerHTML=getCats().map(c=>
+    `<button class="chip${s.cat===c?' active':''}" onclick="selCat('${t}','${c}')">${c}</button>`
+  ).join('');
+}
+
+// 가격 구간 — DB 기반 자동 생성 (최대 5개), 이후 편집 가능
+function getRanges(cat){
+  if(categoryRanges[cat]&&categoryRanges[cat].length) return categoryRanges[cat];
+  const prices=[...new Set(allProducts.filter(p=>p.category===cat).map(p=>p.price).filter(Boolean))].sort((a,b)=>a-b);
+  if(!prices.length) return [];
+  const minP=prices[0], maxP=prices[prices.length-1];
+  const MAX=5;
+  const span=maxP-minP;
+  if(span===0){categoryRanges[cat]=[{min:0,max:null}];return categoryRanges[cat];}
+  const units=[1000,5000,10000,50000,100000,500000,1000000,5000000];
+  let unit=units[0];
+  for(let u of units){unit=u;if(Math.ceil(span/u)<=MAX) break;}
+  const ranges=[];
+  let cur=Math.floor(minP/unit)*unit;
+  while(cur<maxP&&ranges.length<MAX-1){ranges.push({min:cur,max:cur+unit});cur+=unit;}
+  ranges.push({min:cur,max:null});
+  categoryRanges[cat]=JSON.parse(JSON.stringify(ranges));
+  return categoryRanges[cat];
+}
+
+function getRL(r){
+  const f=n=>n>=1000000?(n/1000000).toFixed(n%1000000===0?0:1)+'백만':n>=10000?(n/10000)+'만':n.toLocaleString('ko-KR');
+  if(r.min===0||r.min===null||r.min===undefined)
+    return f(r.max)+'원 이하';
+  if(r.max===null||r.max===undefined)
+    return f(r.min)+'원 이상';
+  return f(r.min)+'~'+f(r.max)+'원';
+}
+
+function matchRange(price,r){
+  const mn=r.min||0;
+  const mx=r.max;
+  return price>=mn&&(mx===null||mx===undefined||price<=mx);
+}
+
+// 필터
+function resetF(t){
+  if(t==='p') pS={cat:null,ft:null,brand:null,pi:null};
+  else fS={cat:null,ft:null,brand:null,pi:null};
+  ['step2','step3','step4'].forEach(s=>show(t+'-'+s,false));
+  show(t+'-rw',false);
+  ['sn1','sn2','sn3','sn4'].forEach(s=>done(t+'-'+s,false));
+  ['brand','price'].forEach(x=>document.getElementById(t+'-ft-'+x).classList.remove('active'));
+}
+
+function show(id,v){const el=document.getElementById(id);if(el)el.classList.toggle('step-hidden',!v);}
+function done(id,v){const el=document.getElementById(id);if(el)el.classList.toggle('done',v);}
+
+function selCat(t,cat){
+  const s=t==='p'?pS:fS;
+  if(s.cat===cat){resetF(t);buildCatChips(t);return;}
+  s.cat=cat;s.ft=null;s.brand=null;s.pi=null;
+  buildCatChips(t);
+  done(t+'-sn1',true);
+  show(t+'-step2',true);
+  show(t+'-step3',false);show(t+'-step4',false);show(t+'-rw',false);
+  ['brand','price'].forEach(x=>document.getElementById(t+'-ft-'+x).classList.remove('active'));
+}
+
+function setFT(t,type){
+  const s=t==='p'?pS:fS;
+  s.ft=type;s.brand=null;s.pi=null;
+  document.getElementById(t+'-ft-brand').classList.toggle('active',type==='brand');
+  document.getElementById(t+'-ft-price').classList.toggle('active',type==='price');
+  done(t+'-sn2',true);
+  show(t+'-step3',true);show(t+'-step4',false);show(t+'-rw',false);
+  renderS3(t);
+}
+
+function renderS3(t){
+  const s=t==='p'?pS:fS;
+  const lbl=document.getElementById(t+'-s3lbl');
+  const ct=document.getElementById(t+'-s3');
+  const cp=allProducts.filter(p=>p.category===s.cat);
+  if(s.ft==='brand'){
+    lbl.textContent='브랜드 선택';
+    const brands=[...new Set(cp.map(p=>p.brand))];
+    ct.innerHTML=`<div class="chips-row">${brands.map(b=>`<button class="chip${s.brand===b?' active':''}" onclick="selV('${t}','brand','${encodeURIComponent(b)}')">${b}</button>`).join('')}</div>`;
+  } else {
+    lbl.textContent='가격 구간 선택';
+    const ranges=getRanges(s.cat);
+    if(!ranges.length){
+      ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요. 아래 설정에서 추가해주세요.</div>`;
+      return;
+    }
+    ct.innerHTML=`<div class="chips-row">${ranges.map((r,i)=>`<button class="chip${s.pi===i?' active':''}" onclick="selV('${t}','price',${i})">${getRL(r)}</button>`).join('')}</div>`;
+  }
+}
+
+function selV(t,type,val){
+  const s=t==='p'?pS:fS;
+  if(type==='brand'){const b=decodeURIComponent(val);s.brand=s.brand===b?null:b;}
+  else{const i=Number(val);s.pi=s.pi===i?null:i;}
+  renderS3(t);
+  const hasV=s.brand!==null||s.pi!==null;
+  done(t+'-sn3',hasV);
+  show(t+'-step4',hasV);
+  show(t+'-rw',false);
+  if(hasV) renderS4(t);
+}
+
+function renderS4(t){
+  const s=t==='p'?pS:fS;
+  const lbl=document.getElementById(t+'-s4lbl');
+  const ct=document.getElementById(t+'-s4');
+  let filtered=allProducts.filter(p=>p.category===s.cat);
+  if(s.brand) filtered=filtered.filter(p=>p.brand===s.brand);
+  if(s.pi!==null){const r=getRanges(s.cat)[s.pi];filtered=filtered.filter(p=>matchRange(p.price,r));}
+  if(s.ft==='brand'){
+    lbl.textContent='가격 구간 선택';
+    const ranges=getRanges(s.cat);
+    if(!ranges.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
+    ct.innerHTML=`<div class="chips-row">${ranges.map((r,i)=>{
+      const has=filtered.some(p=>matchRange(p.price,r));
+      return has?`<button class="chip${s.pi===i?' active':''}" onclick="selS4('${t}','price',${i})">${getRL(r)}</button>`:'';
+    }).join('')}</div>`;
+  } else {
+    lbl.textContent='브랜드 선택';
+    const brands=[...new Set(filtered.map(p=>p.brand))];
+    ct.innerHTML=`<div class="chips-row">${brands.map(b=>`<button class="chip${s.brand===b?' active':''}" onclick="selS4('${t}','brand','${encodeURIComponent(b)}')">${b}</button>`).join('')}</div>`;
+  }
+}
+
+function selS4(t,type,val){
+  const s=t==='p'?pS:fS;
+  if(type==='brand'){const b=decodeURIComponent(val);s.brand=s.brand===b?null:b;}
+  else{const i=Number(val);s.pi=s.pi===i?null:i;}
+  renderS4(t);
+  const both=s.brand!==null&&s.pi!==null;
+  done(t+'-sn4',both);
+  show(t+'-rw',both);
+  if(both) renderResults(t);
+}
+
+function renderResults(t){
+  const s=t==='p'?pS:fS;
+  let prods=allProducts.filter(p=>p.category===s.cat);
+  if(s.brand) prods=prods.filter(p=>p.brand===s.brand);
+  if(s.pi!==null){const r=getRanges(s.cat)[s.pi];prods=prods.filter(p=>matchRange(p.price,r));}
+  const af=document.getElementById(t+'-af');
+  let tags=`<div class="active-filter-tag">${s.cat}</div>`;
+  if(s.brand) tags+=`<div class="active-filter-tag">${s.brand} <button onclick="clrF('${t}','brand')">×</button></div>`;
+  if(s.pi!==null) tags+=`<div class="active-filter-tag">${getRL(getRanges(s.cat)[s.pi])} <button onclick="clrF('${t}','price')">×</button></div>`;
+  af.innerHTML=tags;
+  document.getElementById(t+'-rm').textContent=`${prods.length}개 상품`;
+  const grid=document.getElementById(t+'-pg');
+  if(!prods.length){grid.innerHTML='<div class="empty">조건에 맞는 상품이 없습니다</div>';return;}
+  grid.innerHTML=prods.map(p=>t==='p'
+    ?`<div class="prod-card${selProd&&selProd.name===p.name?' selected':''}" onclick='selProduct(${JSON.stringify(p)})'><div class="prod-cat">${p.category}${p.subcategory?' · '+p.subcategory:''}</div><div class="prod-brand">${p.brand}</div><div class="prod-name">${p.name}</div><div class="prod-price">${p.price.toLocaleString('ko-KR')}원</div></div>`
+    :`<div class="prod-card${fCalcProd&&fCalcProd.name===p.name?' selected':''}" onclick='selFCalc(${JSON.stringify(p)})'><div class="prod-cat">${p.category}${p.subcategory?' · '+p.subcategory:''}</div><div class="prod-brand">${p.brand}</div><div class="prod-name">${p.name}</div><div class="prod-price">${p.price.toLocaleString('ko-KR')}원</div></div>`
+  ).join('');
+}
+
+// 상품 찾기 가격 계산
+function selFCalc(p){
+  fCalcProd=p;
+  document.getElementById('f-calc-wrap').classList.add('visible');
+  document.getElementById('f-calc-name').textContent=p.name;
+  document.getElementById('f-calc-info').textContent=p.brand+' · '+p.category;
+  document.getElementById('f-retail-val').textContent=p.price.toLocaleString('ko-KR')+'원';
+  document.getElementById('f-cost-val').textContent=p.cost.toLocaleString('ko-KR')+'원';
+  if(fS.cat) renderResults('f');
+  calcFPrice();
+  document.getElementById('f-calc-wrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function clearFCalc(){
+  fCalcProd=null;
+  document.getElementById('f-calc-wrap').classList.remove('visible');
+  if(fS.cat) renderResults('f');
+}
+
+function setFCalcMode(mode){
+  fCalcMode=mode;
+  document.getElementById('f-mode-disc').classList.toggle('active',mode==='discount');
+  document.getElementById('f-mode-margin').classList.toggle('active',mode==='margin');
+  document.getElementById('f-disc-row').style.display=mode==='discount'?'flex':'none';
+  document.getElementById('f-margin-row').style.display=mode==='margin'?'flex':'none';
+  calcFPrice();
+}
+
+function calcFPrice(){
+  if(!fCalcProd) return;
+  const retail=fCalcProd.price;
+  const cost=fCalcProd.cost;
+  let sellPrice=0;
+  if(fCalcMode==='discount'){
+    const disc=parseFloat(document.getElementById('f-disc-input').value)||0;
+    sellPrice=Math.round(retail*(1-disc/100));
+  } else {
+    const marginRate=parseFloat(document.getElementById('f-margin-input').value)||0;
+    sellPrice=Math.round(cost/(1-marginRate/100));
+  }
+  const profit=sellPrice-cost;
+  const marginPct=sellPrice>0?(profit/sellPrice*100):0;
+  document.getElementById('f-sell-val').textContent=sellPrice.toLocaleString('ko-KR')+'원';
+  const pv=document.getElementById('f-profit-val');
+  const mv=document.getElementById('f-margin-val');
+  pv.textContent=profit.toLocaleString('ko-KR')+'원';
+  mv.textContent=marginPct.toFixed(1)+'%';
+  pv.className='f-result-val '+(profit>0?'pos':profit<0?'neg':'warn');
+  mv.className='f-result-val '+(marginPct>0?'pos':marginPct<0?'neg':'warn');
+  // 할인율 모드일 때 원가 대비 마진율 추가 표시
+  const extra=document.getElementById('f-extra-info');
+  if(fCalcMode==='discount'&&cost>0){
+    const costMargin=((sellPrice-cost)/cost*100);
+    extra.textContent=`원가 대비 마진율 : ${costMargin.toFixed(1)}%`;
+    extra.style.color=costMargin>0?'var(--green)':'var(--red)';
+  } else {
+    extra.textContent='';
+  }
+}
+
+function clrF(t,type){
+  const s=t==='p'?pS:fS;
+  if(type==='brand') s.brand=null;
+  else s.pi=null;
+  show(t+'-step4',false);show(t+'-rw',false);
+  done(t+'-sn3',false);done(t+'-sn4',false);
+  renderS3(t);
+}
+
+// 가격 구간 설정
+function buildPSTabs(){
+  document.getElementById('ps-cat-tabs').innerHTML=getCats().map(c=>`<button class="cat-stab${psCat===c?' active':''}" onclick="selPSCat('${c}')">${c}</button>`).join('');
+  if(psCat) renderPSContent();
+}
+
+function selPSCat(cat){
+  psCat=cat;
+  buildPSTabs();
+}
+
+function renderPSContent(){
+  if(!psCat){document.getElementById('ps-content').innerHTML='<div class="no-cat-msg">카테고리를 선택해서 구간을 설정하세요</div>';return;}
+  const ranges=categoryRanges[psCat]||[];
+  const prices=allProducts.filter(p=>p.category===psCat).map(p=>p.price).sort((a,b)=>a-b);
+  const refHtml=prices.map(p=>`<span class="ref-tag">${p.toLocaleString('ko-KR')}원</span>`).join('');
+  const rowsHtml=ranges.length ? ranges.map((r,i)=>`
+    <div class="range-row">
+      <input type="number" value="${r.min||0}" placeholder="최솟값" onchange="updateRangeMin(${i},this.value)"/>
+      <span class="range-sep">~</span>
+      <input type="number" value="${r.max||''}" placeholder="최댓값 (없으면 빈칸)" onchange="updateRangeMax(${i},this.value)"/>
+      <span class="range-sep">원</span>
+      <span class="range-preview">${getRL(r)}</span>
+      <button class="rm-btn" onclick="delRange(${i})">×</button>
+    </div>`).join('') : '<div class="no-range-msg">구간이 없어요. 아래 버튼으로 추가하세요.</div>';
+  const previewHtml=ranges.map(r=>`<span class="preview-chip">${getRL(r)}</span>`).join('');
+  document.getElementById('ps-content').innerHTML=`
+    <div class="ref-box">
+      <div class="ref-title">${psCat} 실제 가격 (DB 참고)</div>
+      <div class="ref-prices">${refHtml}</div>
+    </div>
+    <div class="range-rows" id="ps-rows">${rowsHtml}</div>
+    <div class="ps-btns">
+      <button class="btn btn-sm btn-primary" onclick="addRange()">+ 구간 추가</button>
+      <button class="btn btn-sm" onclick="resetRanges()">초기화</button>
+    </div>
+    <div class="preview-section">
+      <div class="preview-label">필터 미리보기</div>
+      <div class="preview-chips" id="ps-preview">${previewHtml||'<span style="font-size:12px;color:var(--text3)">구간을 추가하면 여기 표시됩니다</span>'}</div>
+    </div>`;
+}
+
+function updateRangeMin(i,val){
+  if(!categoryRanges[psCat]) return;
+  categoryRanges[psCat][i].min=val?Number(val):0;
+  refreshPSPreview();
+  saveSettings();
+}
+
+function updateRangeMax(i,val){
+  if(!categoryRanges[psCat]) return;
+  categoryRanges[psCat][i].max=val?Number(val):null;
+  refreshPSPreview();
+  saveSettings();
+}
+
+function refreshPSPreview(){
+  const ranges=categoryRanges[psCat]||[];
+  const el=document.getElementById('ps-preview');
+  if(el) el.innerHTML=ranges.map(r=>`<span class="preview-chip">${getRL(r)}</span>`).join('')||'<span style="font-size:12px;color:var(--text3)">구간을 추가하면 여기 표시됩니다</span>';
+  const rows=document.getElementById('ps-rows');
+  if(rows) rows.querySelectorAll('.range-preview').forEach((el,i)=>{if(ranges[i])el.textContent=getRL(ranges[i]);});
+}
+
+function addRange(){
+  if(!categoryRanges[psCat]) categoryRanges[psCat]=[];
+  const ranges=categoryRanges[psCat];
+  const last=ranges[ranges.length-1];
+  const newMin=last?(last.max||0):0;
+  ranges.push({min:newMin,max:null});
+  renderPSContent();
+  saveSettings();
+}
+
+function delRange(i){
+  if(!categoryRanges[psCat]) return;
+  categoryRanges[psCat].splice(i,1);
+  renderPSContent();
+  if(pS.pi===i) pS.pi=null;
+  if(fS.pi===i) fS.pi=null;
+  saveSettings();
+}
+
+function resetRanges(){
+  delete categoryRanges[psCat];
+  renderPSContent();
+  saveSettings();
+}
+
+// 상품 선택
+function selProduct(p){
+  selProd=p;
+  document.getElementById('prod-name').value=p.name;
+  document.getElementById('retail').value=p.price;
+  document.getElementById('cost').value=p.cost;
+  document.getElementById('p-sel-wrap').innerHTML=`<div class="selected-product-box"><div><div class="sp-name">${p.name}</div><div class="sp-brand">${p.brand} · ${p.category}</div></div><button class="sp-clear" onclick="clrProd()">×</button></div>`;
+  if(pS.cat) renderResults('p');
+  calcPrice();
+}
+
+function clrProd(){
+  selProd=null;
+  document.getElementById('p-sel-wrap').innerHTML='';
+  document.getElementById('prod-name').value='';
+  document.getElementById('retail').value='';
+  document.getElementById('cost').value='';
+  if(pS.cat) renderResults('p');
+  calc();
+}
+
+function switchTab(t,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(t).classList.add('active');
+}
+
+function setType(t){
+  productType=t;
+  document.getElementById('type-single').classList.toggle('active',t==='single');
+  document.getElementById('type-package').classList.toggle('active',t==='package');
+  document.getElementById('single-sec').style.display=t==='single'?'block':'none';
+  document.getElementById('pkg-sec').style.display=t==='package'?'block':'none';
+  calc();
+}
+
+function setPM(m){
+  priceMode=m;
+  document.getElementById('m-disc').classList.toggle('active',m==='discount');
+  document.getElementById('m-direct').classList.toggle('active',m==='direct');
+  document.getElementById('disc-field').style.display=m==='discount'?'block':'none';
+  document.getElementById('direct-field').style.display=m==='direct'?'block':'none';
+  calcPrice();
+}
+
+function addPkg(){
+  const d=document.createElement('div');d.className='pkg-item';
+  d.innerHTML=`<input placeholder="상품명" class="pi-name"/><input placeholder="원가" type="number" class="pi-cost" oninput="calcPkgCost()"/><span>원</span><button class="rm-btn" onclick="removePkg(this)">×</button>`;
+  document.getElementById('pkg-items').appendChild(d);
+}
+
+function removePkg(btn){
+  if(document.querySelectorAll('.pkg-item').length>1) btn.closest('.pkg-item').remove();
+  calcPkgCost();
+}
+
+function calcPkgCost(){
+  const total=[...document.querySelectorAll('.pi-cost')].reduce((a,i)=>a+(parseFloat(i.value)||0),0);
+  document.getElementById('pkg-cost-disp').value=total?total.toLocaleString('ko-KR'):'';
+  calc();
+}
+
+function calcPrice(){
+  if(priceMode==='discount'){
+    const retail=getRetail();
+    const disc=parseFloat(document.getElementById('disc-rate').value)||0;
+    document.getElementById('direct-price').value=Math.round(retail*(1-disc/100))||'';
+  }
+  calc();
+}
+
+function getRetail(){return productType==='single'?parseFloat(document.getElementById('retail').value)||0:parseFloat(document.getElementById('pkg-retail').value)||0;}
+function getCost(){if(productType==='single') return parseFloat(document.getElementById('cost').value)||0;return[...document.querySelectorAll('.pi-cost')].reduce((a,i)=>a+(parseFloat(i.value)||0),0);}
+function fmt(n){return n.toLocaleString('ko-KR')+'원';}
+
+function calc(){
+  const cost=getCost();
+  const selling=parseFloat(document.getElementById('direct-price').value)||0;
+  const feeRate=parseFloat(document.getElementById('fee').value)||0;
+  const freeMin=parseFloat(document.getElementById('free-ship-min').value)||0;
+  const shipCost=parseFloat(document.getElementById('ship').value)||0;
+  const other=parseFloat(document.getElementById('other').value)||0;
+  const targetM=parseFloat(document.getElementById('target-margin').value)||0;
+  const fee=Math.round(selling*feeRate/100);
+  const shipBurden=selling>0&&selling<freeMin?shipCost:0;
+  const totalCost=cost+fee+shipBurden+other;
+  const profit=selling-totalCost;
+  const margin=selling>0?(profit/selling*100):0;
+  document.getElementById('r-selling').textContent=selling?fmt(selling):'-';
+  document.getElementById('r-totalcost').textContent=totalCost?fmt(totalCost):'-';
+  const pe=document.getElementById('r-profit');const me=document.getElementById('r-margin');
+  pe.textContent=selling?fmt(profit):'-';
+  me.textContent=selling?margin.toFixed(1)+'%':'-';
+  pe.className='metric-val '+(profit>0?'pos':profit<0?'neg':'warn');
+  me.className='metric-val '+(margin>=targetM?'pos':margin>=0?'warn':'neg');
+  document.getElementById('b-cost').textContent=cost?fmt(cost):'-';
+  document.getElementById('b-fee').textContent=fee?fmt(fee):'-';
+  document.getElementById('b-ship').textContent=selling?(selling>=freeMin?`무료배송`:fmt(shipBurden)):'-';
+  document.getElementById('b-other').textContent=other?fmt(other):'-';
+  document.getElementById('b-total').textContent=totalCost?fmt(totalCost):'-';
+  const tv=document.getElementById('target-price-val');
+  if(cost&&targetM>0){const minSell=Math.ceil((cost+shipCost+other)/(1-feeRate/100-targetM/100));tv.textContent=fmt(minSell);tv.style.color=selling&&selling>=minSell?'var(--green)':'var(--red)';}
+  else{tv.textContent='-';tv.style.color='';}
+}
+
+init();
+</script>
+</body>
+</html>
