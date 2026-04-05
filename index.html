@@ -590,29 +590,29 @@ function renderS4(t){
     const brands=[...new Set(base.map(p=>p.brand))];
     ct.innerHTML=`<div class="chips-row">${brands.map(b=>`<button class="chip${s.brand===b?' active':''}" onclick="selS4('${t}','brand','${encodeURIComponent(b)}')">${b}</button>`).join('')}</div>`;
   } else {
-    lbl.textContent='가격 포인트 선택 (시작~끝)';
+    lbl.textContent='가격 구간 선택';
     const points=getRanges(s.cat);
     if(!points.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
     ct.innerHTML=`<div class="chips-row">${points.map((p,i)=>{
       const isStart=s.pi===i, isEnd=s.piEnd===i;
-      const cls=isStart||isEnd?' active':'';
-      const mark=isStart?' (시작)':isEnd?' (끝)':'';
-      return `<button class="chip${cls}" onclick="selPricePoint('${t}',${i})">${getPointLabel(p)}${mark}</button>`;
+      return `<button class="chip${isStart||isEnd?' active':''}" onclick="selPricePoint('${t}',${i})">${getPointLabel(p)}</button>`;
     }).join('')}</div>
-    ${s.pi!==null?`<div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):'시작점 선택됨. 끝점을 선택하세요.'}</div>`:'<div style="font-size:12px;color:var(--text2);margin-top:6px">시작 포인트를 선택하세요</div>'}`;
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):s.pi!==null?'끝 포인트를 선택하세요':'포인트 두 개를 선택하면 그 사이 상품이 표시돼요'}</div>`;
   }
 }
 
 function selPricePoint(t,i){
   const s=t==='p'?pS:fS;
-  if(s.pi===null){
-    s.pi=i; s.piEnd=null;
-  } else if(s.piEnd===null){
-    if(i===s.pi){s.pi=null;s.piEnd=null;}
+  if(s.pi===null&&s.piEnd===null){
+    s.pi=i;
+  } else if(s.pi!==null&&s.piEnd===null){
+    if(i===s.pi){s.pi=null;}
     else if(i<s.pi){s.piEnd=s.pi;s.pi=i;}
     else{s.piEnd=i;}
-  } else {
-    s.pi=i; s.piEnd=null;
+  } else if(s.pi!==null&&s.piEnd!==null){
+    if(i===s.piEnd){s.piEnd=null;}
+    else if(i===s.pi){s.pi=s.piEnd;s.piEnd=null;}
+    else{s.pi=i;s.piEnd=null;}
   }
   renderS4(t);
   const hasV=s.pi!==null&&s.piEnd!==null;
@@ -643,14 +643,14 @@ function renderS5(t){
   const pr=getPriceRange(t);
   if(pr) filtered=filtered.filter(p=>matchRange(p.price,pr));
   if(s.ft==='brand'){
-    lbl.textContent='가격 포인트 선택 (시작~끝)';
+    lbl.textContent='가격 구간 선택';
     const points=getRanges(s.cat);
     if(!points.length){ct.innerHTML=`<div class="no-range-msg">가격 구간 설정이 없어요.</div>`;return;}
     ct.innerHTML=`<div class="chips-row">${points.map((p,i)=>{
       const isStart=s.pi===i, isEnd=s.piEnd===i;
-      return `<button class="chip${isStart||isEnd?' active':''}" onclick="selPricePoint5('${t}',${i})">${getPointLabel(p)}${isStart?' (시작)':isEnd?' (끝)':''}</button>`;
+      return `<button class="chip${isStart||isEnd?' active':''}" onclick="selPricePoint5('${t}',${i})">${getPointLabel(p)}</button>`;
     }).join('')}</div>
-    ${s.pi!==null?`<div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):'끝점을 선택하세요.'}</div>`:''}`;
+    <div style="font-size:12px;color:var(--text2);margin-top:6px">${s.piEnd!==null?'구간: '+getPointLabel(points[s.pi])+' ~ '+getPointLabel(points[s.piEnd]):s.pi!==null?'끝 포인트를 선택하세요':''}</div>`;
   } else {
     lbl.textContent='브랜드 선택';
     const brands=[...new Set(filtered.map(p=>p.brand))];
@@ -660,12 +660,17 @@ function renderS5(t){
 
 function selPricePoint5(t,i){
   const s=t==='p'?pS:fS;
-  if(s.pi===null){s.pi=i;s.piEnd=null;}
-  else if(s.piEnd===null){
-    if(i===s.pi){s.pi=null;s.piEnd=null;}
+  if(s.pi===null&&s.piEnd===null){
+    s.pi=i;
+  } else if(s.pi!==null&&s.piEnd===null){
+    if(i===s.pi){s.pi=null;}
     else if(i<s.pi){s.piEnd=s.pi;s.pi=i;}
     else{s.piEnd=i;}
-  } else {s.pi=i;s.piEnd=null;}
+  } else if(s.pi!==null&&s.piEnd!==null){
+    if(i===s.piEnd){s.piEnd=null;}
+    else if(i===s.pi){s.pi=s.piEnd;s.piEnd=null;}
+    else{s.pi=i;s.piEnd=null;}
+  }
   renderS5(t);
   done(t+'-sn5',s.pi!==null&&s.piEnd!==null);
   renderResults(t);
@@ -984,7 +989,7 @@ function calc(){
   const other=parseFloat(document.getElementById('other').value)||0;
   const targetM=parseFloat(document.getElementById('target-margin').value)||0;
   const fee=Math.round(selling*feeRate/100);
-  const shipBurden=selling>0&&selling<freeMin?shipCost:0;
+  const shipBurden=selling>0&&selling>=freeMin?shipCost:0;
   const totalCost=cost+fee+shipBurden+other;
   const profit=selling-totalCost;
   const margin=selling>0?(profit/selling*100):0;
@@ -997,7 +1002,7 @@ function calc(){
   me.className='metric-val '+(margin>=targetM?'pos':margin>=0?'warn':'neg');
   document.getElementById('b-cost').textContent=cost?fmt(cost):'-';
   document.getElementById('b-fee').textContent=fee?fmt(fee):'-';
-  document.getElementById('b-ship').textContent=selling?(selling>=freeMin?`무료배송`:fmt(shipBurden)):'-';
+  document.getElementById('b-ship').textContent=selling?(selling>=freeMin?`무료배송 (-${fmt(shipCost)})`:fmt(0)):'-';
   document.getElementById('b-other').textContent=other?fmt(other):'-';
   document.getElementById('b-total').textContent=totalCost?fmt(totalCost):'-';
   const tv=document.getElementById('target-price-val');
